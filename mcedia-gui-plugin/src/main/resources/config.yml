@@ -1,0 +1,20 @@
+# Mcedia GUI 插件配置
+
+# 盔甲架名称匹配模式（包含其中任一即视为播放器）
+armor-stand-patterns:
+  - "mcedia"
+  - "mcdia"
+
+# 默认每位玩家最多拥有的活跃播放器数量
+# 可通过 mcedia.limit.<N> 权限覆盖
+default-limit: 1
+
+# 默认播放器配置值
+defaults:
+  volume: 5.0
+  volume-range-min: 2.0
+  volume-range-max: 500.0
+  scale: 1.0
+
+# 消息前缀
+prefix: "&6[Mcedia] &r"

@@ -1,0 +1,21 @@
+name: mcediagui
+version: '${version}'
+main: ict.minesunshineone.mcediagui.McediaGuiPlugin
+api-version: "1.21"
+folia-supported: true
+authors: [minesunshineone]
+description: Mcedia 播放器 GUI 配置插件
+
+commands:
+  mcediagui:
+    description: Mcedia 播放器管理
+    usage: /mcediagui admin
+    permission: mcediagui.use
+
+permissions:
+  mcedia.use:
+    description: 允许使用 Mcedia GUI 配置播放器
+    default: true
+  mcedia.admin:
+    description: 管理员权限，可管理所有播放器，不受数量限制
+    default: op
