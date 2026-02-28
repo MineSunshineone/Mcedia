@@ -35,7 +35,6 @@ public class ArmorStandConfig {
 
     // ===== 标签 =====
     public boolean looping = false;
-    public boolean paused = false;
 
     /**
      * 从盔甲架当前状态读取配置
@@ -154,5 +153,9 @@ public class ArmorStandConfig {
 
         // 单独隐藏盔甲架名称标签
         armorStand.setCustomNameVisible(false);
+
+        // 盔甲架被破坏时不掉落装备（书与笔）
+        armorStand.getEquipment().setItemInMainHandDropChance(0);
+        armorStand.getEquipment().setItemInOffHandDropChance(0);
     }
 }

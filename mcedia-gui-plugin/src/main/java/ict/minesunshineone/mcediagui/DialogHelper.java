@@ -41,6 +41,11 @@ public class DialogHelper {
         this.plugin = plugin;
     }
 
+    /** 玩家退出时清理待处理数据，防止内存泄漏 */
+    public void cleanupPlayer(UUID playerUUID) {
+        pendingEdits.remove(playerUUID);
+    }
+
     /**
      * 打开配置 Dialog（普通玩家蹲下右键时调用）
      */
@@ -97,9 +102,6 @@ public class DialogHelper {
         inputs.add(DialogInput.text("start_time", Component.text("⏱ 开始时间 (H:M:S)", NamedTextColor.AQUA))
                 .initial(c.startTime).width(200).maxLength(32).build());
 
-        // --- 播放控制（放在最前面方便操作） ---
-        inputs.add(DialogInput.bool("paused", Component.text("⏸ 暂停播放", NamedTextColor.RED))
-                .initial(c.paused).build());
         inputs.add(DialogInput.bool("looping", Component.text("🔁 循环播放", NamedTextColor.RED))
                 .initial(c.looping).build());
 
@@ -160,7 +162,6 @@ public class DialogHelper {
         ArmorStandConfig config = new ArmorStandConfig();
         config.url = nvl(view.getText("url"), "");
         config.startTime = nvl(view.getText("start_time"), "");
-        config.paused = safeBoolean(view, "paused", false);
         config.looping = safeBoolean(view, "looping", false);
         config.volume = safeFloat(view, "volume", 5f);
         config.volumeRangeMin = safeFloat(view, "volume_min", 2f);
@@ -184,24 +185,18 @@ public class DialogHelper {
 
         // Folia 兼容：在盔甲架实体所属的区域线程执行修改
         armorStand.getScheduler().run(plugin, task -> {
-            // 暂停时清除主手书，客户端看到无书会停止播放
-            if (config.paused) {
-                armorStand.getEquipment().setItemInMainHand(null);
-            } else {
-                armorStand.getEquipment().setItemInMainHand(config.buildMainHandBook(player.getName()));
-            }
+            armorStand.getEquipment().setItemInMainHand(config.buildMainHandBook(player.getName()));
             armorStand.getEquipment().setItemInOffHand(config.buildOffHandBook());
             config.applyRotation(armorStand);
 
             plugin.getDataManager().addArmorStand(player, armorStand, config.url);
 
-            String statusMsg = config.paused ? "⏸ 播放器已暂停" : "✔ 播放器配置已应用！";
+            String statusMsg = "✔ 播放器配置已应用！";
             player.getScheduler().run(plugin,
                     t -> player.sendMessage(Component.text(statusMsg, NamedTextColor.GREEN)),
                     null);
 
-            plugin.getLogger().fine("玩家 " + player.getName() + " 配置了播放器: " + config.url
-                    + (config.paused ? " (已暂停)" : ""));
+            plugin.getLogger().fine("玩家 " + player.getName() + " 配置了播放器: " + config.url);
         }, () -> player.sendMessage(Component.text("盔甲架所在区域未加载", NamedTextColor.RED)));
     }
 

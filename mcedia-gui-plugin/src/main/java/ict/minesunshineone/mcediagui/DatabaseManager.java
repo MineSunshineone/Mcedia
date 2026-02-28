@@ -20,14 +20,27 @@ public class DatabaseManager {
         this.plugin = plugin;
     }
 
+    public boolean isConnected() {
+        try {
+            return connection != null && !connection.isClosed();
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
     public void init() {
         try {
+            // 显式加载 H2 驱动
+            Class.forName("org.h2.Driver");
+
             File dbFile = new File(plugin.getDataFolder(), "data");
             plugin.getDataFolder().mkdirs();
             String url = "jdbc:h2:" + dbFile.getAbsolutePath() + ";MODE=MySQL";
             connection = DriverManager.getConnection(url);
             createTable();
             plugin.getLogger().info("H2 数据库已连接");
+        } catch (ClassNotFoundException e) {
+            plugin.getLogger().log(Level.SEVERE, "找不到 H2 驱动，请检查 plugin.yml 中的 libraries 配置", e);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "H2 数据库初始化失败", e);
         }
@@ -48,7 +61,6 @@ public class DatabaseManager {
                         created_at       BIGINT NOT NULL
                     )
                     """);
-            // 索引：按 owner 查询
             stmt.execute("""
                     CREATE INDEX IF NOT EXISTS idx_owner ON media_players(owner_uuid)
                     """);
@@ -59,6 +71,8 @@ public class DatabaseManager {
      * 插入或更新一条记录（MERGE = upsert）
      */
     public void upsert(PlayerDataManager.TrackedArmorStand t) {
+        if (!isConnected())
+            return;
         String sql = """
                 MERGE INTO media_players (armor_stand_uuid, owner_uuid, owner_name,
                     world_name, x, y, z, url, created_at)
@@ -84,6 +98,8 @@ public class DatabaseManager {
      * 删除一条记录
      */
     public void delete(UUID armorStandUUID) {
+        if (!isConnected())
+            return;
         try (PreparedStatement ps = connection.prepareStatement(
                 "DELETE FROM media_players WHERE armor_stand_uuid = ?")) {
             ps.setString(1, armorStandUUID.toString());
@@ -97,6 +113,8 @@ public class DatabaseManager {
      * 删除指定玩家的所有记录
      */
     public void deleteByOwner(UUID ownerUUID) {
+        if (!isConnected())
+            return;
         try (PreparedStatement ps = connection.prepareStatement(
                 "DELETE FROM media_players WHERE owner_uuid = ?")) {
             ps.setString(1, ownerUUID.toString());
@@ -111,6 +129,8 @@ public class DatabaseManager {
      */
     public List<PlayerDataManager.TrackedArmorStand> loadAll() {
         List<PlayerDataManager.TrackedArmorStand> result = new ArrayList<>();
+        if (!isConnected())
+            return result;
         try (Statement stmt = connection.createStatement();
                 ResultSet rs = stmt.executeQuery(
                         "SELECT * FROM media_players ORDER BY created_at DESC")) {
@@ -128,6 +148,8 @@ public class DatabaseManager {
      */
     public List<PlayerDataManager.TrackedArmorStand> loadByOwner(UUID ownerUUID) {
         List<PlayerDataManager.TrackedArmorStand> result = new ArrayList<>();
+        if (!isConnected())
+            return result;
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT * FROM media_players WHERE owner_uuid = ? ORDER BY created_at DESC")) {
             ps.setString(1, ownerUUID.toString());
@@ -146,6 +168,8 @@ public class DatabaseManager {
      * 获取指定玩家的播放器数量
      */
     public int countByOwner(UUID ownerUUID) {
+        if (!isConnected())
+            return 0;
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT COUNT(*) FROM media_players WHERE owner_uuid = ?")) {
             ps.setString(1, ownerUUID.toString());
@@ -163,6 +187,8 @@ public class DatabaseManager {
      * 获取总记录数
      */
     public int countAll() {
+        if (!isConnected())
+            return 0;
         try (Statement stmt = connection.createStatement();
                 ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM media_players")) {
             if (rs.next())
@@ -178,6 +204,8 @@ public class DatabaseManager {
      */
     public List<PlayerDataManager.TrackedArmorStand> loadPage(int offset, int limit) {
         List<PlayerDataManager.TrackedArmorStand> result = new ArrayList<>();
+        if (!isConnected())
+            return result;
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT * FROM media_players ORDER BY created_at DESC LIMIT ? OFFSET ?")) {
             ps.setInt(1, limit);

@@ -6,6 +6,9 @@ folia-supported: true
 authors: [minesunshineone]
 description: Mcedia 播放器 GUI 配置插件
 
+libraries:
+  - com.h2database:h2:2.3.232
+
 commands:
   mcediagui:
     description: Mcedia 播放器管理

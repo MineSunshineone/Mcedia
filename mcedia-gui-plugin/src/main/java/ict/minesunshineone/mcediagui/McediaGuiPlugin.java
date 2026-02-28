@@ -10,15 +10,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Mcedia GUI 插件主类。
@@ -79,7 +78,7 @@ public class McediaGuiPlugin extends JavaPlugin implements Listener {
      * 蹲下 + 右键 mcedia 盔甲架 → 打开配置 Dialog
      * 使用 HIGH 优先级确保先于其他插件处理
      */
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInteractAtEntity(PlayerInteractAtEntityEvent event) {
         if (!(event.getRightClicked() instanceof ArmorStand armorStand))
             return;
@@ -102,42 +101,28 @@ public class McediaGuiPlugin extends JavaPlugin implements Listener {
     }
 
     /**
-     * 不蹲下 + 右键 mcedia 盔甲架 → 原有书本放置逻辑（向后兼容）
-     * 所有 mcedia 盔甲架交互一律取消，防止玩家拿走/刷书。
+     * mcedia 盔甲架被破坏时自动清除数据库记录
      */
     @EventHandler
-    public void onArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
-        ArmorStand armorStand = event.getRightClicked();
+    public void onEntityDeath(org.bukkit.event.entity.EntityDeathEvent event) {
+        if (!(event.getEntity() instanceof ArmorStand armorStand))
+            return;
         if (!isMediaPlayer(armorStand))
             return;
 
-        // 一律取消默认交互，防止拿走书本
-        event.setCancelled(true);
+        dataManager.removeArmorStand(armorStand.getUniqueId());
+        getLogger().fine("mcedia 盔甲架被破坏，已清除记录: " + armorStand.getUniqueId());
+    }
 
-        // 蹲下时由 Dialog 处理，这里不做额外操作
-        if (event.getPlayer().isSneaking())
-            return;
-
-        // 只处理对主手槽的书本放置
-        if (event.getSlot() != EquipmentSlot.HAND)
-            return;
-
-        ItemStack newItem = event.getPlayerItem();
-        if (newItem.getType().isAir() || !newItem.getType().name().contains("BOOK"))
-            return;
-
-        BookMeta newBookMeta = (BookMeta) newItem.clone().getItemMeta();
-        if (newBookMeta == null || !newBookMeta.hasPages())
-            return;
-
-        ItemStack bookToPlace = newItem.clone();
-        bookToPlace.setAmount(1);
-        newBookMeta.displayName(Component.text(
-                event.getPlayer().getName() + ":" + System.currentTimeMillis()));
-        bookToPlace.setItemMeta(newBookMeta);
-
-        armorStand.getEquipment().setItemInMainHand(bookToPlace);
-        getLogger().fine("播放器 " + armorStand.getName() + " 的内容已更新（通过书本）");
+    /**
+     * 玩家退出时清理缓存，防止内存泄漏
+     */
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        if (dialogHelper != null) {
+            dialogHelper.cleanupPlayer(uuid);
+        }
     }
 
     // ===== 命令处理 =====

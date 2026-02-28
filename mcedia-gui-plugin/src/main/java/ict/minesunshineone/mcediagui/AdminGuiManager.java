@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -143,7 +144,7 @@ public class AdminGuiManager implements Listener {
                 .plainText().serialize(title).startsWith("Mcedia 管理面板");
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
@@ -197,10 +198,19 @@ public class AdminGuiManager implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (isAdminGui(event.getView().title())) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        if (!isAdminGui(event.getView().title())) return;
+        // 清理缓存，防止内存泄漏
+        viewerPage.remove(player.getUniqueId());
+        viewerData.remove(player.getUniqueId());
     }
 }
